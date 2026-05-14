@@ -4,13 +4,17 @@ import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 
 import TransactionItem from '@/components/transactionItem';
-import { getGoals, deleteTransaction } from '@/storage/ItemStorage';
+import { useSQLiteContext } from 'expo-sqlite';
+import { goalType, transactionType } from './Home';
 
-export default function GoalDetails({ navigation, route }) {
+
+export default function GoalDetails({ navigation, route }: {navigation: any, route: any}) {
 
     const { goal: routeGoal } = route.params;
 
-    const [goal, setGoal] = useState(null);
+    const [goal, setGoal] = useState({} as goalType);
+
+    const db = useSQLiteContext();
 
     useFocusEffect(
         useCallback(() => {
@@ -19,20 +23,36 @@ export default function GoalDetails({ navigation, route }) {
     );
 
     async function loadGoal() {
-        const goals = await getGoals();
-        const found = goals.find(g => g.id === routeGoal.id);
-        setGoal(found);
+        const goal = await db.getFirstAsync(`
+            SELECT
+                m.id,
+                m.name,
+                m.amount,
+                COALESCE(SUM(t.amount),0) AS current
+            FROM targets m
+            LEFT JOIN transactions t on t.target_id = m.id
+            WHERE m.id=?
+            GROUP BY m.id, m.name, m.amount;
+            `, [routeGoal.id]) as goalType;
+
+        const transactions = await db.getAllAsync(`
+            SELECT * FROM transactions WHERE target_id = ?
+            `, [routeGoal.id]) as transactionType[];
+
+        goal.transactions = transactions;
+
+        setGoal(goal);
     }
 
     async function handleDelete(transactionId: string) {
-        await deleteTransaction(goal.id, transactionId);
+        await db.runAsync(`DELETE FROM transactions WHERE id=?`, [transactionId]);
         loadGoal();
     }
 
     if (!goal) return null;
 
-    const progress = goal.total > 0 ? goal.saved / goal.total : 0;
-
+    const progress = goal.current > 0 ? goal?.current / goal?.amount : 0;
+    
     return (
         <View style={styles.container}>
 
@@ -53,18 +73,18 @@ export default function GoalDetails({ navigation, route }) {
             <Text style={styles.title}>{goal.name}</Text>
 
             <Text style={styles.saved}>
-                R$ {goal.saved.toFixed(2)} de R$ {goal.total.toFixed(2)}
+                R$ {goal?.current?.toFixed(2)} de R$ {goal?.amount?.toFixed(2)}
             </Text>
 
             <Text style={styles.percent}>
-                {Math.min(100,Math.round(progress * 100))}%
+                {Math.min(100, Math.round(progress * 100))}%
             </Text>
 
             <View style={styles.progressBar}>
                 <View
                     style={[
                         styles.progressFill,
-                        { width: `${Math.min(progress * 100,100)}%` }
+                        { width: `${Math.min(progress * 100, 100)}%` }
                     ]}
                 />
             </View>
@@ -72,7 +92,7 @@ export default function GoalDetails({ navigation, route }) {
             <Text style={styles.sectionTitle}>Transações</Text>
 
             <FlatList
-                data={goal.transactions}
+                data={goal?.transactions}
                 keyExtractor={(item) => item.id}
                 ListEmptyComponent={
                     <Text style={styles.empty}>

@@ -2,43 +2,30 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'reac
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 
-import { addGoal, updateGoal, deleteGoal } from '@/storage/ItemStorage';
+import { useSQLiteContext } from 'expo-sqlite';
+import { goalType } from './Home';
 
-export default function NewGoal({ navigation, route }) {
+export default function NewGoal({ navigation, route }: {navigation:any, route:any}) {
 
     const { goal } = route.params || {};
 
     const [name, setName] = useState(goal ? goal.name : '');
-    const [value, setValue] = useState(goal ? String(goal.total) : '');
+    const [value, setValue] = useState(goal ? String(goal.amount) : '');
 
-    async function handleSave() {
-        if (!name || !value) return;
+    const db = useSQLiteContext();
 
-        const parsedValue = parseFloat(value.replace(',', '.'));
-
-        if (isNaN(parsedValue) || parsedValue <= 0) return;
-
-        try {
-            if (goal) {
-                await updateGoal({
-                    ...goal,
-                    name,
-                    total: parsedValue,
-                });
-            } else {
-                await addGoal({
-                    id: Date.now().toString(),
-                    name,
-                    total: parsedValue,
-                    saved: 0,
-                    transactions: [],
-                });
+    const handleAddGoals = async () => {
+        if (!goal) {
+            await db.runAsync(`INSERT INTO targets (name, amount) VALUES (?,?)`, [name, value]);
+        } else {
+            try {
+                
+                await db.runAsync(`UPDATE targets SET name=?, amount=? WHERE id=?`, [name, value, goal.id]);
+            } catch (error) {
+                console.log(error);
             }
-
-            navigation.goBack();
-        } catch (error) {
-            console.log('Erro ao salvar:', error);
         }
+        navigation.goBack();
     }
 
     function handleDelete() {
@@ -53,7 +40,7 @@ export default function NewGoal({ navigation, route }) {
                     text: 'Excluir',
                     style: 'destructive',
                     onPress: async () => {
-                        await deleteGoal(goal.id);
+                        await db.runAsync(`DELETE FROM targets WHERE id=?`,[goal.id])
                         navigation.navigate('Home');
                     },
                 },
@@ -101,7 +88,7 @@ export default function NewGoal({ navigation, route }) {
                 onChangeText={setValue}
             />
 
-            <TouchableOpacity style={styles.button} onPress={handleSave}>
+            <TouchableOpacity style={styles.button} onPress={handleAddGoals}>
                 <Text style={styles.buttonText}>Salvar</Text>
             </TouchableOpacity>
 

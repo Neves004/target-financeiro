@@ -1,8 +1,9 @@
+import { goalType } from '@/screens/Home';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
-export default function GoalCard({ goal, onPress }) {
-    const progress = goal.saved / goal.total;
+export default function GoalCard({ goal, onPress }: {goal: goalType, onPress: () => void}) {
+    const progress = goal.current / goal.amount;
 
     return (
         <TouchableOpacity style={styles.card} onPress={onPress}>
@@ -13,7 +14,7 @@ export default function GoalCard({ goal, onPress }) {
             </View>
 
             <Text style={styles.value}>
-                R$ {goal.saved.toFixed(2)} de R$ {goal.total.toFixed(2)}
+                R$ {goal.current.toFixed(2)} de R$ {goal.amount.toFixed(2)}
             </Text>
 
         </TouchableOpacity>

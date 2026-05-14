@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { transactionType } from '@/screens/Home';
 
-export default function TransactionItem({ item, onDelete }) {
+export default function TransactionItem({ item, onDelete }: {item: transactionType, onDelete: () => void}) {
 
-    const isIncome = item.type === 'in';
+    const isIncome = item.amount>0
 
     return (
         <View style={styles.container}>
@@ -17,11 +18,11 @@ export default function TransactionItem({ item, onDelete }) {
             <View style={styles.info}>
 
                 <Text style={styles.value}>
-                    {isIncome ? '+' : '-'} R$ {item.value.toFixed(2)}
+                    {isIncome ? '+' : '-'} R$ {item.amount.toFixed(2)}
                 </Text>
 
                 <Text style={styles.details}>
-                    {item.date} • {item.description || 'Sem descrição'}
+                    {item.observation || 'Sem descrição'}
                 </Text>
 
             </View>

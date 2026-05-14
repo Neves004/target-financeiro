@@ -1,10 +1,11 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useSQLiteContext } from 'expo-sqlite';
 
-import { addTransaction } from '@/storage/ItemStorage';
 
-export default function NewTransaction({ navigation, route }) {
+
+export default function NewTransaction({ navigation, route }: {navigation: any, route: any}) {
 
     const { goal } = route.params;
 
@@ -12,16 +13,18 @@ export default function NewTransaction({ navigation, route }) {
     const [value, setValue] = useState('');
     const [description, setDescription] = useState('');
 
+    const db = useSQLiteContext();
+
     async function handleSave() {
         if (!value) return;
-
-        await addTransaction(goal.id, {
-            id: Date.now().toString(),
-            type,
-            value: parseFloat(value.replace(',', '.')),
-            description,
-            date: new Date().toLocaleDateString(),
-        });
+        
+        try {
+            
+            const a = await db.runAsync(`INSERT INTO transactions (target_id, amount, observation) VALUES (?,?,?)`, [goal.id, (parseFloat(value.replace(',', '.')) * (type=='in'?1:-1))!, description??'']);
+            
+        } catch (error) {
+            console.log(error)
+        }
         navigation.goBack();
     }
 
@@ -84,7 +87,7 @@ export default function NewTransaction({ navigation, route }) {
                 onChangeText={setDescription}
             />
 
-            <TouchableOpacity style={styles.button} onPress={handleSave}>
+            <TouchableOpacity style={styles.button} onPress={async () => await handleSave()}>
                 <Text style={styles.buttonText}>Salvar</Text>
             </TouchableOpacity>
 
